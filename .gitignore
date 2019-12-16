@@ -9,6 +9,7 @@ __pycache__/
 /env/
 /build/
 /dist/
+/packages/
 /venv/
 medusa.iml
 /*.egg-info/
