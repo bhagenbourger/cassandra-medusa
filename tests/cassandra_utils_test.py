@@ -131,7 +131,8 @@ class CassandraUtilsTest(unittest.TestCase):
             monitoring=None,
             cassandra=_namedtuple_from_dict(CassandraConfig, config['cassandra']),
             ssh=None,
-            restore=None
+            restore=None,
+            logging=None
         )
         n = Nodetool(medusa_config.cassandra).nodetool
         self.assertEqual(n, ['nodetool'])
@@ -150,7 +151,8 @@ class CassandraUtilsTest(unittest.TestCase):
             monitoring=None,
             cassandra=_namedtuple_from_dict(CassandraConfig, config['cassandra']),
             ssh=None,
-            restore=None
+            restore=None,
+            logging=None
         )
         n = Nodetool(medusa_config.cassandra).nodetool
         expected = ['nodetool', '-u', 'cassandra', '-pw', 'password', '-pwf', '/etc/cassandra/jmx.password',
