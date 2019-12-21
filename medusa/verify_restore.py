@@ -16,7 +16,7 @@
 import logging
 import sys
 
-from medusa.cassandra_utils import wait_for_node_to_come_up, CqlSessionProvider
+from medusa.cassandra_utils import CqlSessionProvider, Cassandra
 
 
 def verify_restore(hosts, config):
@@ -32,8 +32,10 @@ def verify_restore(hosts, config):
     """
 
     logging.info('Verifying the restore')
+    cassandra = Cassandra(config.cassandra)
+    health_check = config.restore.health_check
     for host in hosts:
-        wait_for_node_to_come_up(config, host)
+        cassandra.wait_for_node_to_come_up(health_check, host)
 
     restore_verify_query = config.restore.query
 
@@ -73,7 +75,6 @@ def verify_restore(hosts, config):
 
 
 def _get_cql_session_provider(config, hosts):
-
     if int(config.cassandra.is_ccm) == 1:
         cql_hosts = ['localhost']
     else:

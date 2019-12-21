@@ -449,59 +449,56 @@ class Cassandra(object):
         else:
             subprocess.check_output(self._start_cmd, shell=True)
 
+    def wait_for_node_to_come_up(self, health_check, host, retries=10, delay=6):
+        """
+            Polls the node until the health check passes.
 
-def wait_for_node_to_come_up(config, host, retries=10, delay=6):
-    """
-        Polls the node until the health check passes.
+            :param health_check: The type of health check to perform, one of cql, thrift, all.
+            :param host: The target host on which to run the check
+            :param retries: The number of times to retry the health check. Defaults to 10
+            :param delay: A delay in seconds to wait before polling again. Defaults to 6 seconds.
+            :return: None when the node is determined to be up. If the retries are exhausted, an exception is raised.
+            """
 
-        :param health_check: The type of health check to perform, one of cql, thrift, all.
-        :param host: The target host on which to run the check
-        :param retries: The number of times to retry the health check. Defaults to 10
-        :param delay: A delay in seconds to wait before polling again. Defaults to 6 seconds.
-        :return: None when the node is determined to be up. If the retries are exhausted, an exception is raised.
+        logging.info('Waiting for Cassandra to come up on %s', host)
+
+        attempts = 0
+        while attempts < retries:
+            if Cassandra.is_node_up(self, health_check, host):
+                logging.info('Cassandra is up on %s', host)
+                return None
+            else:
+                time.sleep(delay)
+                attempts = attempts + 1
+
+        raise CassandraNodeNotUpError(host, attempts)
+
+    def is_node_up(self, health_check, host):
+        """
+        Calls nodetool statusbinary, nodetool statusthrift or both. This function checks the output returned from
+        nodetool and not the return code. There could be a normal return code of zero when the node is an unhealthy
+        state and not accepting requests.
+
+        :param health_check: Supported values are cql, thrift, and all. The latter will perform both checks. Defaults to
+        cql.
+        :param host: The target host on which to perform the check
+        :return: True if the node is accepting requests, False otherwise. If both cql and thrift are checked, then the
+        node must be ready to accept requests for both in order for the health check to be successful.
         """
 
-    logging.info('Waiting for Cassandra to come up on %s', host)
-
-    attempts = 0
-    while attempts < retries:
-        if is_node_up(config, host):
-            logging.info('Cassandra is up on %s', host)
-            return None
+        if int(self._is_ccm) == 1:
+            args = ['ccm', 'node1', 'nodetool']
         else:
-            time.sleep(delay)
-            attempts = attempts + 1
+            args = ['nodetool', '-h', host]
 
-    raise CassandraNodeNotUpError(host, attempts)
-
-
-def is_node_up(config, host):
-    """
-    Calls nodetool statusbinary, nodetool statusthrift or both. This function checks the output returned from nodetool
-    and not the return code. There could be a normal return code of zero when the node is an unhealthy state and not
-    accepting requests.
-
-    :param health_check: Supported values are cql, thrift, and all. The latter will perform both checks. Defaults to
-    cql.
-    :param host: The target host on which to perform the check
-    :return: True if the node is accepting requests, False otherwise. If both cql and thrift are checked, then the node
-    must be ready to accept requests for both in order for the health check to be successful.
-    """
-
-    if int(config.cassandra.is_ccm) == 1:
-        args = ['ccm', 'node1', 'nodetool']
-    else:
-        args = ['nodetool', '-h', host]
-
-    health_check = config.restore.health_check
-    if health_check == 'cql':
-        return is_cql_up(args)
-    elif health_check == 'thrift':
-        return is_thrift_up(args)
-    elif health_check == 'all':
-        return is_cql_up(list(args)) and is_thrift_up(list(args))
-    else:
-        return is_cql_up(args)
+        if health_check == 'cql':
+            return is_cql_up(args)
+        elif health_check == 'thrift':
+            return is_thrift_up(args)
+        elif health_check == 'all':
+            return is_cql_up(list(args)) and is_thrift_up(list(args))
+        else:
+            return is_cql_up(args)
 
 
 def is_cql_up(args):

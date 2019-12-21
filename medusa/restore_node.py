@@ -24,7 +24,7 @@ import sys
 import time
 import uuid
 
-from medusa.cassandra_utils import Cassandra, is_node_up
+from medusa.cassandra_utils import Cassandra
 from medusa.download import download_data
 from medusa.storage import Storage
 from medusa.verify_restore import verify_restore
@@ -272,7 +272,9 @@ def get_node_tokens(node_fqdn, token_map_file):
 def wait_for_seeds(config, seeds):
     seed_list = seeds.split(',')
     attempts = 0
-    while not any([is_node_up(config, s) for s in seed_list]):
+    cassandra = Cassandra(config.cassandra)
+    health_check = config.restore.health_check
+    while not any([cassandra.is_node_up(health_check, s) for s in seed_list]):
         logging.info('No seeds are up yet, will wait a minute')
         attempts += 1
         time.sleep(A_MINUTE)
